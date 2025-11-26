@@ -1,94 +1,72 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getCropRecommendations, formatCropRecommendations } from './cropRecommendation';
 
-const API_KEY = 'AIzaSyCUBmeaACBsfB0IEcfZ2ZaFWGZaSy6eA5M';
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || 'demo-key');
 
-export const generateFarmingSchedule = async (soilData, location, weather) => {
-    try {
-        const model = genAI.getGenerativeModel({
-            model: "gemini-pro",
-            generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 500,
-            }
-        });
+export async function generateFarmingSchedule(soilData, location, weatherData) {
+   try {
+      // Get data-driven crop recommendations
+      const cropRecommendations = getCropRecommendations(soilData, weatherData, 5);
+      const formattedCropRecs = formatCropRecommendations(cropRecommendations, soilData);
 
-        const prompt = `As an agricultural expert, create a detailed farming schedule and recommendations for an Indian farmer:
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-Soil Data:
-- pH: ${soilData.ph}
+      const prompt = `You are an expert agricultural advisor. Based on the following soil analysis and crop recommendations, provide detailed farming advice:
+
+SOIL DATA:
+- pH Level: ${soilData.ph}
+- NPK Values: ${soilData.npk} (N:P:K in mg/kg)
 - Organic Carbon: ${soilData.organicCarbon}%
-- NPK: ${soilData.npk}
 - Location: ${location}
-- Current Weather: ${weather.description}, ${weather.temp}°C
 
-Provide specific recommendations in this format:
+WEATHER DATA:
+- Temperature: ${weatherData?.temp || 'N/A'}°C
+- Humidity: ${weatherData?.humidity || 'N/A'}%
+- Conditions: ${weatherData?.description || 'N/A'}
 
-1. WHAT TO PLANT:
-   - Best crops for this soil (2-3 crops)
-   
-2. WHEN TO PLANT:
-   - Ideal planting months
-   
-3. WATERING SCHEDULE:
-   - Frequency and amount
-   
-4. FERTILIZER & PESTICIDES:
-   - Types and quantities
-   - Application timing
-   
-5. EXPECTED HARVEST:
-   - Timeline and yield estimate
+DATA-DRIVEN CROP RECOMMENDATIONS:
+${formattedCropRecs}
 
-Keep language simple and practical for Indian farmers.`;
+Please provide:
+1. **Planting Schedule**: Best times to plant the recommended crops
+2. **Watering Schedule**: Irrigation frequency and amount
+3. **Fertilizer Application**: Specific fertilizer recommendations with quantities
+4. **Pest Management**: Common pests for these crops and organic control methods
+5. **Harvest Timeline**: Expected harvest periods
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("AI recommendations error:", error);
-        return `Based on your soil data:
+Keep the advice practical, specific to the location, and easy to understand for farmers.`;
 
-1. WHAT TO PLANT:
-   - Wheat (suitable for pH ${soilData.ph})
-   - Mustard crops
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+   } catch (error) {
+      console.error('Error generating farming schedule:', error);
+      return `Based on your soil analysis:
 
-2. WHEN TO PLANT:
-   - October-November (Rabi season)
+${formatCropRecommendations(getCropRecommendations(soilData, weatherData, 5), soilData)}
 
-3. WATERING SCHEDULE:
-   - Water every 7-10 days
-   - 50-60mm per irrigation
+**General Recommendations:**
+- Monitor soil moisture regularly
+- Apply organic compost to improve soil structure
+- Rotate crops to maintain soil health
+- Test soil every 6 months for optimal results`;
+   }
+}
 
-4. FERTILIZER & PESTICIDES:
-   - Apply NPK ${soilData.npk} at sowing
-   - Urea top dressing after 30 days
+export function speakText(text) {
+   if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      speechSynthesis.speak(utterance);
+      return true;
+   }
+   return false;
+}
 
-5. EXPECTED HARVEST:
-   - March-April (4-5 months)
-   - Expected yield: 40-45 quintals/hectare`;
-    }
-};
-
-// Text-to-speech function
-export const speakText = (text) => {
-    if ('speechSynthesis' in window) {
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-IN';
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
-
-        window.speechSynthesis.speak(utterance);
-        return true;
-    }
-    return false;
-};
-
-// Stop speech
-export const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-    }
+export function stopSpeaking() {
+   if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+   }
 };
