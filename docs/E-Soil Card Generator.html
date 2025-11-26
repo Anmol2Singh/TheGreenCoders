@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Soil Smart Card System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .section-title {
+            color: #166534;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+    <div class="container mx-auto max-w-4xl bg-white rounded-xl shadow-lg p-6 sm:p-10 border border-gray-200">
+        <!-- Title Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-5xl font-bold text-gray-800 leading-tight mb-2">E-Soil Smart Card System</h1>
+            <p class="text-lg sm:text-2xl text-green-700 font-semibold">Your Digital Soil Health Platform</p>
+        </header>
+
+        <!-- User Info and Navigation -->
+        <div class="mb-6 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            <p id="user-status" class="text-sm font-medium text-gray-600 truncate">Signing in...</p>
+            <nav class="flex space-x-2">
+                <button id="show-form-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition duration-300">New Card</button>
+                <button id="show-list-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition duration-300">My Cards</button>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Form View for Creating a New Card -->
+            <section id="form-view" class="space-y-6">
+                <h2 class="section-title text-2xl mb-4">Soil Testing & Card Generation</h2>
+                <form id="soil-data-form" class="space-y-4">
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <div class="flex flex-col">
+                            <label for="farmerName" class="text-sm font-medium text-gray-700 mb-1">Farmer's Name</label>
+                            <input type="text" id="farmerName" name="farmerName" required class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="village" class="text-sm font-medium text-gray-700 mb-1">Village</label>
+                            <input type="text" id="village" name="village" required class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
+                        </div>
+                    </div>
+
+                    <div class="grid sm:grid-cols-3 gap-4">
+                        <div class="flex flex-col">
+                            <label for="ph" class="text-sm font-medium text-gray-700 mb-1">pH</label>
+                            <input type="number" step="0.1" id="ph" name="ph" required class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="organicCarbon" class="text-sm font-medium text-gray-700 mb-1">Organic Carbon (%)</label>
+                            <input type="number" step="0.1" id="organicCarbon" name="organicCarbon" required class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
+                        </div>
+                        <div class="flex flex-col">
+                            <label for="npk" class="text-sm font-medium text-gray-700 mb-1">NPK (mg/kg)</label>
+                            <input type="text" id="npk" name="npk" placeholder="e.g., N:150, P:25, K:180" required class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="recommendations" class="text-sm font-medium text-gray-700 mb-1">Recommendations</label>
+                        <textarea id="recommendations" name="recommendations" rows="3" class="p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"></textarea>
+                    </div>
+
+                    <div id="status-message" class="text-center text-sm font-medium h-4"></div>
+
+                    <button type="submit" class="w-full py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 transition duration-300">Generate Smart Card</button>
+                </form>
+            </section>
+
+            <!-- List View for Existing Cards -->
+            <section id="list-view" class="space-y-4 hidden">
+                <h2 class="section-title text-2xl mb-4 text-center">My E-Soil Smart Cards</h2>
+                <div id="cards-list" class="space-y-4">
+                    <!-- Cards will be dynamically inserted here -->
+                </div>
+                <p id="no-cards-message" class="text-center text-gray-500 hidden">You have no saved soil cards yet. Use the "New Card" button to create one!</p>
+            </section>
+
+            <!-- Detail View for a single card -->
+            <section id="detail-view" class="space-y-4 hidden">
+                <button id="back-to-list-btn" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg shadow-md hover:bg-gray-400 transition duration-300 mb-4">&larr; Back to Cards</button>
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                    <h2 class="section-title text-3xl mb-4" id="detail-card-title"></h2>
+                    <div id="detail-qrcode-container" class="mb-6 flex justify-center"></div>
+                    <div class="grid sm:grid-cols-2 gap-4 text-gray-700">
+                        <div>
+                            <p class="font-bold">Farmer:</p>
+                            <p id="detail-farmer-name" class="break-words"></p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Village:</p>
+                            <p id="detail-village" class="break-words"></p>
+                        </div>
+                        <div>
+                            <p class="font-bold">pH:</p>
+                            <p id="detail-ph" class="break-words"></p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Organic Carbon:</p>
+                            <p id="detail-organic-carbon" class="break-words"></p>
+                        </div>
+                        <div>
+                            <p class="font-bold">NPK:</p>
+                            <p id="detail-npk" class="break-words"></p>
+                        </div>
+                        <div>
+                            <p class="font-bold">Recommendations:</p>
+                            <p id="detail-recommendations" class="break-words"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, setDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId = null;
+
+        // Wait for authentication state to be ready
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('user-status').textContent = `User ID: ${userId}`;
+                initializeListeners();
+            } else {
+                try {
+                    if (initialAuthToken) {
+                        const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                        userId = userCredential.user.uid;
+                        document.getElementById('user-status').textContent = `User ID: ${userId}`;
+                        initializeListeners();
+                    } else {
+                        await signInAnonymously(auth);
+                        userId = auth.currentUser.uid;
+                        document.getElementById('user-status').textContent = `User ID (Anonymous): ${userId}`;
+                        initializeListeners();
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    document.getElementById('user-status').textContent = `Authentication failed: ${error.message}`;
+                }
+            }
+        });
+
+        // --- UI State Management ---
+        const formView = document.getElementById('form-view');
+        const listView = document.getElementById('list-view');
+        const detailView = document.getElementById('detail-view');
+        const showFormBtn = document.getElementById('show-form-btn');
+        const showListBtn = document.getElementById('show-list-btn');
+        const backToListBtn = document.getElementById('back-to-list-btn');
+
+        function showView(view) {
+            formView.classList.add('hidden');
+            listView.classList.add('hidden');
+            detailView.classList.add('hidden');
+            view.classList.remove('hidden');
+
+            if (view === formView) {
+                showFormBtn.classList.add('bg-green-600', 'text-white');
+                showFormBtn.classList.remove('bg-gray-300', 'text-gray-800');
+                showListBtn.classList.add('bg-gray-300', 'text-gray-800');
+                showListBtn.classList.remove('bg-green-600', 'text-white');
+            } else if (view === listView) {
+                showListBtn.classList.add('bg-green-600', 'text-white');
+                showListBtn.classList.remove('bg-gray-300', 'text-gray-800');
+                showFormBtn.classList.add('bg-gray-300', 'text-gray-800');
+                showFormBtn.classList.remove('bg-green-600', 'text-white');
+            }
+        }
+
+        showFormBtn.addEventListener('click', () => showView(formView));
+        showListBtn.addEventListener('click', () => showView(listView));
+        backToListBtn.addEventListener('click', () => showView(listView));
+
+        // --- Firestore Data Functions and Listeners ---
+        function initializeListeners() {
+            if (!userId) return; // Ensure user is authenticated
+
+            // Listen for changes in the soil_data collection
+            const userSoilDataRef = collection(db, `artifacts/${appId}/users/${userId}/soil_data`);
+            onSnapshot(userSoilDataRef, (snapshot) => {
+                const cardsListDiv = document.getElementById('cards-list');
+                const noCardsMessage = document.getElementById('no-cards-message');
+                cardsListDiv.innerHTML = ''; // Clear previous cards
+
+                if (snapshot.empty) {
+                    noCardsMessage.classList.remove('hidden');
+                } else {
+                    noCardsMessage.classList.add('hidden');
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const cardElement = document.createElement('div');
+                        cardElement.className = "bg-green-50 p-4 rounded-lg shadow-sm border border-green-200 cursor-pointer hover:bg-green-100 transition duration-200";
+                        cardElement.innerHTML = `
+                            <h3 class="font-bold text-lg text-green-800">${data.farmerName}</h3>
+                            <p class="text-sm text-gray-600">${data.village}</p>
+                            <p class="text-xs text-gray-500 mt-2">pH: ${data.ph}, Organic Carbon: ${data.organicCarbon}%</p>
+                        `;
+                        cardElement.addEventListener('click', () => showDetail(doc.id, data));
+                        cardsListDiv.appendChild(cardElement);
+                    });
+                }
+            });
+        }
+
+        // --- Form Submission Handler ---
+        document.getElementById('soil-data-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const statusMessage = document.getElementById('status-message');
+
+            statusMessage.textContent = "Saving data...";
+            statusMessage.classList.remove('text-red-500');
+            statusMessage.classList.add('text-green-500');
+
+            if (!userId) {
+                statusMessage.textContent = "Error: User not authenticated. Try refreshing.";
+                statusMessage.classList.remove('text-green-500');
+                statusMessage.classList.add('text-red-500');
+                return;
+            }
+
+            const formData = new FormData(form);
+            const data = {
+                farmerName: formData.get('farmerName'),
+                village: formData.get('village'),
+                ph: parseFloat(formData.get('ph')),
+                organicCarbon: parseFloat(formData.get('organicCarbon')),
+                npk: formData.get('npk'),
+                recommendations: formData.get('recommendations') || "No specific recommendations provided.",
+                createdAt: new Date()
+            };
+
+            try {
+                const userSoilDataRef = collection(db, `artifacts/${appId}/users/${userId}/soil_data`);
+                await addDoc(userSoilDataRef, data);
+                statusMessage.textContent = "Card saved successfully!";
+                form.reset();
+                showView(listView);
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                statusMessage.classList.remove('text-green-500');
+                statusMessage.classList.add('text-red-500');
+            }
+        });
+
+        // --- Detail View Logic ---
+        function showDetail(docId, data) {
+            document.getElementById('detail-card-title').textContent = `${data.farmerName}'s Card`;
+            document.getElementById('detail-farmer-name').textContent = data.farmerName;
+            document.getElementById('detail-village').textContent = data.village;
+            document.getElementById('detail-ph').textContent = data.ph;
+            document.getElementById('detail-organic-carbon').textContent = `${data.organicCarbon}%`;
+            document.getElementById('detail-npk').textContent = data.npk;
+            document.getElementById('detail-recommendations').textContent = data.recommendations;
+
+            // Generate QR Code
+            const qrCodeContainer = document.getElementById('detail-qrcode-container');
+            qrCodeContainer.innerHTML = ''; // Clear previous QR code
+            new QRCode(qrCodeContainer, {
+                text: JSON.stringify(data),
+                width: 150,
+                height: 150,
+                colorDark: "#166534",
+                colorLight: "#f0f4f8",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            showView(detailView);
+        }
+    </script>
+</body>
+</html>
