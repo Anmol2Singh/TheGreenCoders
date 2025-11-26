@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getWeatherData, getMarketPrices } from '../lib/api';
 import { generateFarmingSchedule, speakText, stopSpeaking } from '../lib/aiRecommendations';
+import { getCropRecommendations } from '../lib/cropRecommendation';
 import { Sprout, MapPin, CloudSun, TrendingUp, Sparkles, Volume2, VolumeX, Loader2, Plus, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Radar, Bar } from 'react-chartjs-2';
@@ -48,6 +49,7 @@ export default function FarmerDashboard() {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [loading, setLoading] = useState(true);
     const [location, setLocation] = useState('');
+    const [cropRecommendations, setCropRecommendations] = useState([]);
     const cardRef = useRef(null);
 
     useEffect(() => {
@@ -58,6 +60,10 @@ export default function FarmerDashboard() {
 
     const loadFarmerData = async () => {
         try {
+            // Always load market data regardless of card status
+            const market = await getMarketPrices();
+            setMarketData(market.slice(0, 4));
+
             const farmerRef = doc(db, 'farmers', userProfile.farmerId);
             const farmerSnap = await getDoc(farmerRef);
 
@@ -75,10 +81,11 @@ export default function FarmerDashboard() {
                     weatherData
                 );
                 setAiRecommendations(recommendations);
-            }
 
-            const market = await getMarketPrices();
-            setMarketData(market.slice(0, 4));
+                // Get crop recommendations from CSV
+                const crops = getCropRecommendations(cardData.card, weatherData, 5);
+                setCropRecommendations(crops);
+            }
 
             setLoading(false);
         } catch (error) {
@@ -104,16 +111,20 @@ export default function FarmerDashboard() {
         if (!cardRef.current) return;
 
         try {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for rendering
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             const canvas = await html2canvas(cardRef.current, {
-                scale: 2,
+                scale: 3,
                 useCORS: true,
+                allowTaint: true,
                 logging: false,
                 backgroundColor: '#ffffff',
+                foreignObjectRendering: true,
+                imageTimeout: 0,
             });
 
-            const dataUrl = canvas.toDataURL('image/png');
+            const dataUrl = canvas.toDataURL('image/png', 1.0);
             const link = document.createElement('a');
             const fileName = `soil-card-${userProfile.farmerId}.png`;
 
@@ -510,6 +521,55 @@ export default function FarmerDashboard() {
                 </div>
             )}
 
+            {/* Crop Recommendations from CSV */}
+            {card && cropRecommendations.length > 0 && (
+                <div className="bg-gradient-to-br from-green-50 to-white rounded-xl shadow-sm border border-green-100 p-6">
+                    <div className="flex items-center mb-4">
+                        <Sprout className="w-6 h-6 text-green-600 mr-2" />
+                        <h3 className="text-lg font-bold text-gray-800">Recommended Crops for Your Soil</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">Based on your soil analysis and CSV crop database</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {cropRecommendations.map((crop, index) => (
+                            <motion.div
+                                key={index}
+                                whileHover={{ scale: 1.02 }}
+                                className="bg-white p-4 rounded-lg border-2 border-green-200 shadow-sm"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-bold text-gray-800 capitalize">{crop.crop}</h4>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${crop.suitability >= 80 ? 'bg-green-100 text-green-700' :
+                                            crop.suitability >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-orange-100 text-orange-700'
+                                        }`}>
+                                        {crop.suitability}% Match
+                                    </span>
+                                </div>
+                                <div className="space-y-1 text-xs text-gray-600">
+                                    <div className="flex justify-between">
+                                        <span>Nitrogen:</span>
+                                        <span className="font-semibold">{Math.round(crop.requirements.N)} kg/ha</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Phosphorus:</span>
+                                        <span className="font-semibold">{Math.round(crop.requirements.P)} kg/ha</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Potassium:</span>
+                                        <span className="font-semibold">{Math.round(crop.requirements.K)} kg/ha</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>pH:</span>
+                                        <span className="font-semibold">{crop.requirements.ph.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* My Card Section - Smart Card Design */}
             <div>
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
@@ -607,18 +667,18 @@ export default function FarmerDashboard() {
                             <div className="mt-6 text-center">
                                 <div className="inline-block bg-white p-2 rounded-lg border border-gray-300">
                                     <QRCodeSVG
-                                        value={JSON.stringify({
-                                            farmerId: userProfile.farmerId,
-                                            farmerName: card.farmerName,
-                                            village: card.village,
-                                            state: card.state,
-                                            ph: card.ph,
-                                            npk: card.npk,
-                                            organicCarbon: card.organicCarbon,
-                                            healthScore: soilScore
-                                        })}
+                                        value={`Farmer: ${card.farmerName}
+ID: ${userProfile.farmerId}
+Village: ${card.village}
+State: ${card.state || 'N/A'}
+Farm Size: ${card.farmSize || '2.5'} acres
+pH: ${card.ph}
+NPK: ${card.npk} mg/kg
+Organic Carbon: ${card.organicCarbon}%
+Health Score: ${soilScore}%
+GreenCoders E-Soil Smart Card`}
                                         size={80}
-                                        level="H"
+                                        level="M"
                                         fgColor="#166534"
                                         includeMargin={false}
                                     />
