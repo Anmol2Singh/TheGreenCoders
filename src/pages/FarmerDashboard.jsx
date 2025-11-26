@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getWeatherData, getMarketPrices } from '../lib/api';
@@ -75,12 +75,27 @@ export default function FarmerDashboard() {
                 const weatherData = await getWeatherData(cardData.card.village);
                 setWeather(weatherData);
 
-                const recommendations = await generateFarmingSchedule(
-                    cardData.card,
-                    cardData.card.village,
-                    weatherData
-                );
-                setAiRecommendations(recommendations);
+                // Check if we already have the schedule saved
+                if (cardData.card.farmingSchedule) {
+                    setAiRecommendations(cardData.card.farmingSchedule);
+                } else {
+                    // Generate and save if not exists
+                    const recommendations = await generateFarmingSchedule(
+                        cardData.card,
+                        cardData.card.village,
+                        weatherData
+                    );
+                    setAiRecommendations(recommendations);
+
+                    // Save back to Firestore for instant load next time
+                    try {
+                        await updateDoc(farmerRef, {
+                            'card.farmingSchedule': recommendations
+                        });
+                    } catch (err) {
+                        console.error("Error saving generated schedule:", err);
+                    }
+                }
 
                 // Get crop recommendations from CSV
                 const crops = getCropRecommendations(cardData.card, weatherData, 5);
@@ -117,11 +132,10 @@ export default function FarmerDashboard() {
             const canvas = await html2canvas(cardRef.current, {
                 scale: 3,
                 useCORS: true,
-                allowTaint: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                foreignObjectRendering: true,
                 imageTimeout: 0,
+                removeContainer: true,
             });
 
             const dataUrl = canvas.toDataURL('image/png', 1.0);

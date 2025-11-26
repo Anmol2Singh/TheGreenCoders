@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, CheckCircle, Sprout, Sparkles } from 'lucide-react';
 import { generateRecommendations } from '../lib/gemini';
+import { generateFarmingSchedule } from '../lib/aiRecommendations';
+import { getWeatherData } from '../lib/api';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,9 +87,16 @@ export default function NewCard() {
             // Generate AI recommendations
             const aiRecommendations = await generateRecommendations(soilData);
 
+            // Get weather data for farming schedule
+            const weatherData = await getWeatherData(soilData.village);
+
+            // Generate detailed farming schedule
+            const farmingSchedule = await generateFarmingSchedule(soilData, soilData.village, weatherData);
+
             const cardData = {
                 ...soilData,
                 recommendations: formData.get('recommendations') || aiRecommendations,
+                farmingSchedule: farmingSchedule,
                 createdAt: new Date().toISOString(),
                 userId: currentUser.uid,
                 farmerId: userProfile.farmerId
