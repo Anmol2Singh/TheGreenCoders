@@ -9,7 +9,7 @@ import { getCropRecommendations } from '../lib/cropRecommendation';
 import { Sprout, MapPin, CloudSun, TrendingUp, Sparkles, Volume2, VolumeX, Loader2, Plus, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Radar, Bar } from 'react-chartjs-2';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -628,7 +628,7 @@ export default function FarmerDashboard() {
                             {/* QR Code (smaller, at bottom) */}
                             <div className="mt-6 text-center">
                                 <div className="inline-block bg-white p-2 rounded-lg border border-gray-300">
-                                    <QRCodeSVG
+                                    <QRCodeCanvas
                                         value={`Farmer: ${card.farmerName}
 ID: ${userProfile.farmerId}
 Village: ${card.village}
